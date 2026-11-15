@@ -13,6 +13,8 @@
 
     body {
       background-color: #000000;
+      color: #ffffff;
+      font-family: 'Courier New', Courier, monospace;
       height: 100vh;
       width: 100vw;
       display: flex;
@@ -22,34 +24,92 @@
       overflow: hidden;
     }
 
-    img {
-      max-width: 90vw;
-      max-height: 90vh;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
+    .morse-container {
+      max-width: 800px;
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.8;
+      letter-spacing: 2px;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
 
-  <img src="01.png" alt="...">
+  <div class="morse-container">
+    .-- . .-.. -.-. --- -- . / - --- / - .... . / -.. --- - / -.. --- - / -.. --- - / .- .-. --. .-.-.- / - .... .. ... / .. ... / .- / ...- . .-. -.-- / .... .- .-. -.. / -- .- --.. . / .-- .... .. -.-. .... / .-. . --.- ..- .. .-. . ... / - .. -- . / .- -. -.. / .--. .-. .. --- .-. / . -..- .--. . .-. .. . -. -.-. . / .-- .. - .... / .- .-. --. ... --..-- / ... ..- -.-. .... / .- ... / -.-. .. -.-. .- -.. .- / ...-- ...-- ----- .---- .-.-.- / .. ..-. / -.-- --- ..- / - .-. -.-- / - --- / ..-. .. -. -.. / .- -. ... .-- . .-. ... / .. -. ... .. -.. . / ..-. .---- ..--- --..-- / ..-. .- .. .-. / .-- .- .-. -. .. -. --. ---... / .. - / .-- --- -. .----. - / .... .- .--. .--. . -. .-.-.-
+  </div>
 
   <script>
-    document.addEventListener("contextmenu", e => e.preventDefault());
-
+    // 1. Защита консоли
     (function antiInspect() {
-      const bannerStyle = "color: #ff3333; background: #111; font-size: 18px; font-weight: bold; font-family: monospace; padding: 12px 16px; border: 1px solid #ff3333;";
+      const bannerStyle = [
+        "color: #ff3333",
+        "background: #111111",
+        "font-size: 18px",
+        "font-weight: bold",
+        "font-family: 'Courier New', monospace",
+        "padding: 12px 16px",
+        "border: 1px solid #ff3333"
+      ].join(";");
+
       function printWarning() {
         console.clear();
         console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
       }
+
       printWarning();
+
+      let devtoolsOpen = false;
+      const threshold = 160;
+
       setInterval(() => {
-        if (window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160) {
+        const widthDiff = window.outerWidth - window.innerWidth > threshold;
+        const heightDiff = window.outerHeight - window.innerHeight > threshold;
+
+        if ((widthDiff || heightDiff) && !devtoolsOpen) {
+          devtoolsOpen = true;
           printWarning();
+        } else if (!widthDiff && !heightDiff) {
+          devtoolsOpen = false;
         }
       }, 800);
+
+      document.addEventListener("keydown", (e) => {
+        if (
+          e.key === "F12" ||
+          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) ||
+          (e.ctrlKey && e.key === "u")
+        ) {
+          printWarning();
+        }
+      });
+    })();
+
+    // 2. Скрытый ввод ключа ("dotdotdot") — работает и на GitHub Pages, и локально
+    (function secretKeyListener() {
+      let buffer = "";
+      // Точный контрольный код для слова "dotdotdot"
+      const TARGET_CODE = 1485575765;
+
+      function quickHash(str) {
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key.length === 1 && e.key !== " ") {
+          buffer = (buffer + e.key.toLowerCase()).slice(-20);
+          const candidate = buffer.slice(-9);
+          if (candidate.length === 9 && quickHash(candidate) === TARGET_CODE) {
+            window.location.href = "begin/";
+          }
+        }
+      });
     })();
   </script>
 
