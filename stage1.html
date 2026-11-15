@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>...</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #050505;
+      color: #e6e6e6;
+      font-family: 'JetBrains Mono', monospace;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    img {
+      max-width: 88vw;
+      max-height: 88vh;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ищет scrifre.png или 01.png прямо в корне репозитория -->
+  <img src="scrifre.png" onerror="this.onerror=null; this.src='01.png';" alt="...">
+
+  <script>
+    document.addEventListener("contextmenu", e => e.preventDefault());
+
+    function goToPage(filename) {
+      const url = new URL(window.location.href);
+      if (url.pathname.endsWith(".html")) {
+        url.pathname = url.pathname.replace(/[^/]+$/, filename);
+      } else {
+        if (!url.pathname.endsWith("/")) url.pathname += "/";
+        url.pathname += filename;
+      }
+      window.location.href = url.toString();
+    }
+
+    // При вводе "player" перекидывает на stage2.html
+    (function nextStageListener() {
+      let codeBuffer = [];
+      const TARGET_SEQ = "KeyP,KeyL,KeyA,KeyY,KeyE,KeyR";
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.key.length > 1) return;
+        codeBuffer.push(e.code);
+        if (codeBuffer.length > 6) codeBuffer.shift();
+
+        if (codeBuffer.join(",") === TARGET_SEQ) {
+          document.body.style.backgroundColor = "#ffffff";
+          setTimeout(() => {
+            goToPage("stage2.html");
+          }, 150);
+        }
+      });
+    })();
+
+    // Защита консоли (F12)
+    (function antiInspect() {
+      const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
+      function printWarning() {
+        console.clear();
+        console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
+      }
+      printWarning();
+      let devtoolsOpen = false;
+      setInterval(() => {
+        const isOpen = window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
+        if (isOpen && !devtoolsOpen) { devtoolsOpen = true; printWarning(); }
+        else if (!isOpen) { devtoolsOpen = false; }
+      }, 800);
+    })();
+  </script>
+
+</body>
+</html>
