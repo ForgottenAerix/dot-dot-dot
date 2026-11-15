@@ -18,10 +18,39 @@
       height: 100vh;
       width: 100vw;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
       overflow: hidden;
+    }
+
+    .controls {
+      margin-bottom: 35px;
+      display: flex;
+      gap: 15px;
+    }
+
+    button {
+      background: transparent;
+      color: #ffffff;
+      border: 1px solid #ffffff;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    button.active {
+      border-color: #ff3333;
+      color: #ff3333;
     }
 
     .morse-container {
@@ -36,12 +65,155 @@
 </head>
 <body>
 
-  <div class="morse-container">
+  <!-- Кнопки управления звуком в самом начале -->
+  <div class="controls">
+    <button id="playMorseBtn" onclick="toggleMorse()">[ PLAY TRANSMISSION ]</button>
+  </div>
+
+  <!-- Текст морзянки -->
+  <div class="morse-container" id="morseText">
     .-- . .-.. -.-. --- -- . / - --- / - .... . / -.. --- - / -.. --- - / -.. --- - / .- .-. --. .-.-.- / - .... .. ... / .. ... / .- / ...- . .-. -.-- / .... .- .-. -.. / -- .- --.. . / .-- .... .. -.-. .... / .-. . --.- ..- .. .-. . ... / - .. -- . / .- -. -.. / .--. .-. .. --- .-. / . -..- .--. . .-. .. . -. -.-. . / .-- .. - .... / .- .-. --. ... --..-- / ... ..- -.-. .... / .- ... / -.-. .. -.-. .- -.. .- / ...-- ...-- ----- .---- .-.-.- / .. ..-. / -.-- --- ..- / - .-. -.-- / - --- / ..-. .. -. -.. / .- -. ... .-- . .-. ... / .. -. ... .. -.. . / ..-. .---- ..--- --..-- / ..-. .- .. .-. / .-- .- .-. -. .. -. --. ---... / .. - / .-- --- -. .----. - / .... .- .--. .--. . -. .-.-.-
   </div>
 
+  <!-- Опционально: если захочешь свой mp3-файл на фон, раскомментируй строку ниже и положи bg.mp3 рядом -->
+  <!-- <audio id="bgMusic" src="bg.mp3" loop></audio> -->
+
   <script>
-    // 1. Защита консоли
+    // === 1. АУДИО: СИНТЕЗАТОР МОРЗЯНКИ И ФОНОВОГО ДАРК-ЭМБИЕНТА ===
+    let audioCtx = null;
+    let isPlaying = false;
+    let stopSignal = false;
+    let droneOsc = null;
+    let droneGain = null;
+
+    function startBackgroundDrone() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (droneOsc) return;
+
+      // Создаём мрачный низкий гул на фоне (55 Гц)
+      droneOsc = audioCtx.createOscillator();
+      droneGain = audioCtx.createGain();
+      droneOsc.type = "sawtooth";
+      droneOsc.frequency.value = 55;
+
+      // Фильтр, чтобы звук был глухим и глубоким, не мешая морзянке
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 140;
+
+      droneGain.gain.value = 0.08;
+      droneOsc.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(audioCtx.destination);
+      droneOsc.start();
+
+      // Если добавлен свой <audio id="bgMusic">, запускаем и его
+      const bgAudio = document.getElementById("bgMusic");
+      if (bgAudio) {
+        bgAudio.volume = 0.3;
+        bgAudio.play().catch(() => {});
+      }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function playBeep(duration) {
+      if (stopSignal) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 650; // Частота писка морзянки
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      await sleep(duration);
+      osc.stop();
+    }
+
+    async function toggleMorse() {
+      const btn = document.getElementById("playMorseBtn");
+      btn.blur(); // Убираем фокус с кнопки, чтобы нажатие Пробела не выключало её
+
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
+
+      // Включаем фоновую атмосферу при первом клике
+      startBackgroundDrone();
+
+      if (isPlaying) {
+        stopSignal = true;
+        isPlaying = false;
+        btn.innerText = "[ PLAY TRANSMISSION ]";
+        btn.classList.remove("active");
+        return;
+      }
+
+      isPlaying = true;
+      stopSignal = false;
+      btn.innerText = "[ STOP TRANSMISSION ]";
+      btn.classList.add("active");
+
+      const morse = document.getElementById("morseText").innerText.trim();
+      const dotTime = 75; // Скорость точки в миллисекундах
+
+      for (let i = 0; i < morse.length; i++) {
+        if (stopSignal) break;
+        const char = morse[i];
+
+        if (char === ".") {
+          await playBeep(dotTime);
+          await sleep(dotTime);
+        } else if (char === "-") {
+          await playBeep(dotTime * 3);
+          await sleep(dotTime);
+        } else if (char === " ") {
+          await sleep(dotTime * 3);
+        } else if (char === "/") {
+          await sleep(dotTime * 7);
+        }
+      }
+
+      isPlaying = false;
+      btn.innerText = "[ PLAY TRANSMISSION ]";
+      btn.classList.remove("active");
+    }
+
+    // === 2. ПЕРЕХОД НА СЛЕДУЮЩИЙ ЭТАП ПРИ ВВОДЕ "DOTDOTDOT" ===
+    (function secretKeyListener() {
+      let codeBuffer = [];
+      // Коды физических клавиш для D-O-T-D-O-T-D-O-T (работает на ЛЮБОЙ раскладке, даже русской!)
+      const TARGET_SEQ = "KeyD,KeyO,KeyT,KeyD,KeyO,KeyT,KeyD,KeyO,KeyT";
+
+      window.addEventListener("keydown", (e) => {
+        // Игнорируем пробелы и системные клавиши вроде Shift/Alt
+        if (e.code === "Space" || e.key.length > 1) return;
+
+        codeBuffer.push(e.code);
+        if (codeBuffer.length > 9) {
+          codeBuffer.shift();
+        }
+
+        if (codeBuffer.join(",") === TARGET_SEQ) {
+          // Вспышка экрана перед переходом, чтобы ты сразу видел, что код сработал
+          document.body.style.backgroundColor = "#ffffff";
+          document.body.style.color = "#000000";
+          setTimeout(() => {
+            window.location.href = "./begin/index.html";
+          }, 150);
+        }
+      });
+    })();
+
+    // === 3. ЗАЩИТА КОНСОЛИ (F12) ===
     (function antiInspect() {
       const bannerStyle = [
         "color: #ff3333",
@@ -61,55 +233,15 @@
       printWarning();
 
       let devtoolsOpen = false;
-      const threshold = 160;
-
       setInterval(() => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
-
-        if ((widthDiff || heightDiff) && !devtoolsOpen) {
+        const isOpen = window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
+        if (isOpen && !devtoolsOpen) {
           devtoolsOpen = true;
           printWarning();
-        } else if (!widthDiff && !heightDiff) {
+        } else if (!isOpen) {
           devtoolsOpen = false;
         }
       }, 800);
-
-      document.addEventListener("keydown", (e) => {
-        if (
-          e.key === "F12" ||
-          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) ||
-          (e.ctrlKey && e.key === "u")
-        ) {
-          printWarning();
-        }
-      });
-    })();
-
-    // 2. Скрытый ввод ключа ("dotdotdot") — работает и на GitHub Pages, и локально
-    (function secretKeyListener() {
-      let buffer = "";
-      // Точный контрольный код для слова "dotdotdot"
-      const TARGET_CODE = 1485575765;
-
-      function quickHash(str) {
-        let h = 2166136261;
-        for (let i = 0; i < str.length; i++) {
-          h ^= str.charCodeAt(i);
-          h = Math.imul(h, 16777619);
-        }
-        return h >>> 0;
-      }
-
-      window.addEventListener("keydown", (e) => {
-        if (e.key.length === 1 && e.key !== " ") {
-          buffer = (buffer + e.key.toLowerCase()).slice(-20);
-          const candidate = buffer.slice(-9);
-          if (candidate.length === 9 && quickHash(candidate) === TARGET_CODE) {
-            window.location.href = "begin/";
-          }
-        }
-      });
     })();
   </script>
 
