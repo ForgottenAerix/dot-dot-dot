@@ -160,10 +160,12 @@
   <audio id="bgMusic" src="Melancholy_BGM.mp3" loop preload="auto"></audio>
 
   <script>
-    // === SHA-256 ХЕШИ ОТВЕТОВ (защита от просмотра исходного кода Ctrl+U) ===
-    const FIRST_HASH  = "a2c0a1cf47260b341b66c6371ff9ee92ae3f1de9d821f681b662eb86ed2467c7";
-    const SECOND_HASH = "489f4ea651e5b44042e229f5194d909fa50f91779f40f91e7a2835b8e3ab063d";
-    const NEXT_TARGET = "c3RhZ2UzLmh0bWw="; // Base64 для "stage3.html"
+    // Закодированные эталоны (работают локально и на GitHub Pages без ошибок)
+    const _0x1 = [98, 117, 116, 116, 101, 114, 102, 108, 121];
+    const _0x2 = [99, 101, 109, 101, 116, 101, 114, 121];
+    const NEXT_TARGET = "c3RhZ2UzLmh0bWw=";
+
+    const _dec = (arr) => arr.map(c => String.fromCharCode(c)).join("");
 
     let phase = 1;
 
@@ -180,13 +182,6 @@
         if (idx < candidates.length) img.src = candidates[idx++];
       };
     })();
-
-    async function sha256(str) {
-      const buf = new TextEncoder().encode(str);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buf);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-    }
 
     function goToPage(filename) {
       const url = new URL(window.location.href);
@@ -205,16 +200,14 @@
       wrapperEl.classList.add("error");
     }
 
-    inputEl.addEventListener("keydown", async (e) => {
+    inputEl.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
 
       const value = inputEl.value.trim().toLowerCase();
       if (!value) return;
 
-      const inputHash = await sha256(value);
-
       if (phase === 1) {
-        if (inputHash === FIRST_HASH) {
+        if (value === _dec(_0x1)) {
           phase = 2;
           inputEl.value = "";
           statusEl.innerHTML = `<span class="highlight">You're smart, aren't you ? \\\\</span><br>Inscribe verbum secundum.`;
@@ -223,7 +216,7 @@
           triggerError();
         }
       } else if (phase === 2) {
-        if (inputHash === SECOND_HASH) {
+        if (value === _dec(_0x2)) {
           inputEl.disabled = true;
           statusEl.innerHTML = `<span class="highlight">[ ACCESS GRANTED ]</span>`;
           document.body.style.backgroundColor = "#ffffff";
@@ -287,6 +280,3 @@
       }, 800);
     })();
   </script>
-
-</body>
-</html>
