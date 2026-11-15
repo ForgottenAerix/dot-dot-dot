@@ -18,10 +18,39 @@
       height: 100vh;
       width: 100vw;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
       overflow: hidden;
+    }
+
+    .controls {
+      margin-bottom: 35px;
+      display: flex;
+      gap: 15px;
+    }
+
+    button {
+      background: transparent;
+      color: #ffffff;
+      border: 1px solid #ffffff;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    button.active {
+      border-color: #ff3333;
+      color: #ff3333;
     }
 
     .morse-container {
@@ -36,80 +65,134 @@
 </head>
 <body>
 
-  <div class="morse-container">
+  <div class="controls">
+    <button id="playMorseBtn" onclick="toggleMorse()">[ PLAY TRANSMISSION ]</button>
+  </div>
+
+  <div class="morse-container" id="morseText">
     .-- . .-.. -.-. --- -- . / - --- / - .... . / -.. --- - / -.. --- - / -.. --- - / .- .-. --. .-.-.- / - .... .. ... / .. ... / .- / ...- . .-. -.-- / .... .- .-. -.. / -- .- --.. . / .-- .... .. -.-. .... / .-. . --.- ..- .. .-. . ... / - .. -- . / .- -. -.. / .--. .-. .. --- .-. / . -..- .--. . .-. .. . -. -.-. . / .-- .. - .... / .- .-. --. ... --..-- / ... ..- -.-. .... / .- ... / -.-. .. -.-. .- -.. .- / ...-- ...-- ----- .---- .-.-.- / .. ..-. / -.-- --- ..- / - .-. -.-- / - --- / ..-. .. -. -.. / .- -. ... .-- . .-. ... / .. -. ... .. -.. . / ..-. .---- ..--- --..-- / ..-. .- .. .-. / .-- .- .-. -. .. -. --. ---... / .. - / .-- --- -. .----. - / .... .- .--. .--. . -. .-.-.-
   </div>
 
   <script>
-    // 1. Защита консоли
-    (function antiInspect() {
-      const bannerStyle = [
-        "color: #ff3333",
-        "background: #111111",
-        "font-size: 18px",
-        "font-weight: bold",
-        "font-family: 'Courier New', monospace",
-        "padding: 12px 16px",
-        "border: 1px solid #ff3333"
-      ].join(";");
+    // 1. Аудио-синтезатор морзянки и фонового гула
+    let audioCtx = null;
+    let isPlaying = false;
+    let stopSignal = false;
+    let droneOsc = null;
 
-      function printWarning() {
-        console.clear();
-        console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
+    function startBackgroundDrone() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (droneOsc) return;
+
+      droneOsc = audioCtx.createOscillator();
+      const droneGain = audioCtx.createGain();
+      droneOsc.type = "sawtooth";
+      droneOsc.frequency.value = 55;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 140;
+
+      droneGain.gain.value = 0.08;
+      droneOsc.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(audioCtx.destination);
+      droneOsc.start();
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function playBeep(duration) {
+      if (stopSignal) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 650;
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      await sleep(duration);
+      osc.stop();
+    }
+
+    async function toggleMorse() {
+      const btn = document.getElementById("playMorseBtn");
+      btn.blur();
+
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") await audioCtx.resume();
+
+      startBackgroundDrone();
+
+      if (isPlaying) {
+        stopSignal = true;
+        isPlaying = false;
+        btn.innerText = "[ PLAY TRANSMISSION ]";
+        btn.classList.remove("active");
+        return;
       }
 
-      printWarning();
+      isPlaying = true;
+      stopSignal = false;
+      btn.innerText = "[ STOP TRANSMISSION ]";
+      btn.classList.add("active");
 
-      let devtoolsOpen = false;
-      const threshold = 160;
+      const morse = document.getElementById("morseText").innerText.trim();
+      const dotTime = 75;
 
-      setInterval(() => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
+      for (let i = 0; i < morse.length; i++) {
+        if (stopSignal) break;
+        const char = morse[i];
+        if (char === ".") { await playBeep(dotTime); await sleep(dotTime); }
+        else if (char === "-") { await playBeep(dotTime * 3); await sleep(dotTime); }
+        else if (char === " ") { await sleep(dotTime * 3); }
+        else if (char === "/") { await sleep(dotTime * 7); }
+      }
 
-        if ((widthDiff || heightDiff) && !devtoolsOpen) {
-          devtoolsOpen = true;
-          printWarning();
-        } else if (!widthDiff && !heightDiff) {
-          devtoolsOpen = false;
-        }
-      }, 800);
+      isPlaying = false;
+      btn.innerText = "[ PLAY TRANSMISSION ]";
+      btn.classList.remove("active");
+    }
 
-      document.addEventListener("keydown", (e) => {
-        if (
-          e.key === "F12" ||
-          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) ||
-          (e.ctrlKey && e.key === "u")
-        ) {
-          printWarning();
+    // 2. Переход в папку begin/ при наборе "dotdotdot"
+    (function secretKeyListener() {
+      let codeBuffer = [];
+      const TARGET_SEQ = "KeyD,KeyO,KeyT,KeyD,KeyO,KeyT,KeyD,KeyO,KeyT";
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.key.length > 1) return;
+        codeBuffer.push(e.code);
+        if (codeBuffer.length > 9) codeBuffer.shift();
+
+        if (codeBuffer.join(",") === TARGET_SEQ) {
+          document.body.style.backgroundColor = "#ffffff";
+          document.body.style.color = "#000000";
+          setTimeout(() => {
+            window.location.href = "./begin/";
+          }, 150);
         }
       });
     })();
 
-    // 2. Скрытый ввод ключа с клавиатуры ("dotdotdot")
-    (function secretKeyListener() {
-      let buffer = "";
-      // Настоящий SHA-256 хэш от слова "dotdotdot"
-      const TARGET_HASH = "e645163cb552b2a47d370c69f68148d72fd74bf734b08e3727716a9f378349d0";
-
-      async function sha256(str) {
-        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    // 3. Защита консоли (F12)
+    (function antiInspect() {
+      const bannerStyle = "color: #ff3333; background: #111111; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; padding: 12px 16px; border: 1px solid #ff3333;";
+      function printWarning() {
+        console.clear();
+        console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
       }
-
-      document.addEventListener("keydown", async (e) => {
-        // Игнорируем пробелы, чтобы сработало и "dotdotdot", и "dot dot dot"
-        if (e.key.length === 1 && e.key !== " ") {
-          buffer = (buffer + e.key.toLowerCase()).slice(-20);
-          const candidate = buffer.slice(-9);
-          if (candidate.length === 9) {
-            const hash = await sha256(candidate);
-            if (hash === TARGET_HASH) {
-              window.location.href = "begin/";
-            }
-          }
-        }
-      });
+      printWarning();
+      let devtoolsOpen = false;
+      setInterval(() => {
+        const isOpen = window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
+        if (isOpen && !devtoolsOpen) { devtoolsOpen = true; printWarning(); }
+        else if (!isOpen) { devtoolsOpen = false; }
+      }, 800);
     })();
   </script>
 
