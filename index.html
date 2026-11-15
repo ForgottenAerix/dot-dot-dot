@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>...</title>
+  <!-- Подключаем чистый и гармоничный моноширинный шрифт JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -12,53 +16,57 @@
     }
 
     body {
-      background-color: #000000;
-      color: #ffffff;
-      font-family: 'Courier New', Courier, monospace;
+      background-color: #050505;
+      color: #e6e6e6;
+      font-family: 'JetBrains Mono', monospace;
       height: 100vh;
       width: 100vw;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px;
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
     .controls {
-      margin-bottom: 35px;
-      display: flex;
-      gap: 15px;
+      margin-bottom: 40px;
     }
 
     button {
       background: transparent;
-      color: #ffffff;
-      border: 1px solid #ffffff;
-      padding: 10px 20px;
+      color: #a0a0a0;
+      border: 1px solid #333333;
+      padding: 12px 24px;
       font-family: inherit;
-      font-size: 14px;
-      letter-spacing: 2px;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 3px;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.25s ease;
     }
 
     button:hover {
-      background: #ffffff;
-      color: #000000;
+      color: #ffffff;
+      border-color: #ffffff;
+      background: rgba(255, 255, 255, 0.04);
     }
 
     button.active {
-      border-color: #ff3333;
-      color: #ff3333;
+      border-color: #ff3b3b;
+      color: #ff3b3b;
     }
 
     .morse-container {
-      max-width: 800px;
+      max-width: 760px;
       text-align: center;
-      font-size: 18px;
-      line-height: 1.8;
-      letter-spacing: 2px;
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 2.1;
+      letter-spacing: 2.5px;
+      word-spacing: 6px;
       word-wrap: break-word;
     }
   </style>
@@ -66,7 +74,7 @@
 <body>
 
   <div class="controls">
-    <button id="playMorseBtn" onclick="toggleMorse()">[ PLAY TRANSMISSION ]</button>
+    <button id="playMorseBtn" onclick="toggleMorse()">Play Transmission</button>
   </div>
 
   <div class="morse-container" id="morseText">
@@ -74,7 +82,20 @@
   </div>
 
   <script>
-    // 1. Аудио-синтезатор морзянки и фонового гула
+    // 1. Универсальная функция перехода (без вложенных папок!)
+    function goToPage(filename) {
+      const url = new URL(window.location.href);
+      // Если адрес заканчивается на .html, заменяем имя файла; иначе просто добавляем его
+      if (url.pathname.endsWith(".html")) {
+        url.pathname = url.pathname.replace(/[^/]+$/, filename);
+      } else {
+        if (!url.pathname.endsWith("/")) url.pathname += "/";
+        url.pathname += filename;
+      }
+      window.location.href = url.toString();
+    }
+
+    // 2. Синтезатор морзянки и фонового гула
     let audioCtx = null;
     let isPlaying = false;
     let stopSignal = false;
@@ -91,9 +112,9 @@
 
       const filter = audioCtx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.value = 140;
+      filter.frequency.value = 130;
 
-      droneGain.gain.value = 0.08;
+      droneGain.gain.value = 0.07;
       droneOsc.connect(filter);
       filter.connect(droneGain);
       droneGain.connect(audioCtx.destination);
@@ -109,9 +130,9 @@
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = "sine";
-      osc.frequency.value = 650;
+      osc.frequency.value = 620;
 
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
 
@@ -132,14 +153,14 @@
       if (isPlaying) {
         stopSignal = true;
         isPlaying = false;
-        btn.innerText = "[ PLAY TRANSMISSION ]";
+        btn.innerText = "Play Transmission";
         btn.classList.remove("active");
         return;
       }
 
       isPlaying = true;
       stopSignal = false;
-      btn.innerText = "[ STOP TRANSMISSION ]";
+      btn.innerText = "Stop Transmission";
       btn.classList.add("active");
 
       const morse = document.getElementById("morseText").innerText.trim();
@@ -155,11 +176,11 @@
       }
 
       isPlaying = false;
-      btn.innerText = "[ PLAY TRANSMISSION ]";
+      btn.innerText = "Play Transmission";
       btn.classList.remove("active");
     }
 
-    // 2. ЖЕЛЕЗОБЕТОННЫЙ ПЕРЕХОД в папку begin/ при наборе "dotdotdot"
+    // 3. Скрытый ввод "dotdotdot" -> перекидывает на stage1.html
     (function secretKeyListener() {
       let codeBuffer = [];
       const TARGET_SEQ = "KeyD,KeyO,KeyT,KeyD,KeyO,KeyT,KeyD,KeyO,KeyT";
@@ -173,17 +194,15 @@
           document.body.style.backgroundColor = "#ffffff";
           document.body.style.color = "#000000";
           setTimeout(() => {
-            let basePath = window.location.pathname.replace(/\/index\.html$/i, "");
-            if (!basePath.endsWith("/")) basePath += "/";
-            window.location.href = window.location.origin + basePath + "begin/index.html";
+            goToPage("stage1.html");
           }, 150);
         }
       });
     })();
 
-    // 3. Защита консоли (F12)
+    // 4. Защита консоли (F12)
     (function antiInspect() {
-      const bannerStyle = "color: #ff3333; background: #111111; font-size: 18px; font-weight: bold; font-family: 'Courier New', monospace; padding: 12px 16px; border: 1px solid #ff3333;";
+      const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
       function printWarning() {
         console.clear();
         console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
