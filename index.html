@@ -41,6 +41,7 @@
   </div>
 
   <script>
+    // 1. Защита консоли
     (function antiInspect() {
       const bannerStyle = [
         "color: #ff3333",
@@ -81,6 +82,32 @@
           (e.ctrlKey && e.key === "u")
         ) {
           printWarning();
+        }
+      });
+    })();
+
+    // 2. Скрытый ввод ключа с клавиатуры ("dotdotdot")
+    (function secretKeyListener() {
+      let buffer = "";
+      // Настоящий SHA-256 хэш от слова "dotdotdot"
+      const TARGET_HASH = "e645163cb552b2a47d370c69f68148d72fd74bf734b08e3727716a9f378349d0";
+
+      async function sha256(str) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+
+      document.addEventListener("keydown", async (e) => {
+        // Игнорируем пробелы, чтобы сработало и "dotdotdot", и "dot dot dot"
+        if (e.key.length === 1 && e.key !== " ") {
+          buffer = (buffer + e.key.toLowerCase()).slice(-20);
+          const candidate = buffer.slice(-9);
+          if (candidate.length === 9) {
+            const hash = await sha256(candidate);
+            if (hash === TARGET_HASH) {
+              window.location.href = "begin/";
+            }
+          }
         }
       });
     })();
