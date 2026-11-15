@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>...</title>
+  <title>STAGE 1 // EVERTURN</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -21,21 +21,40 @@
       height: 100vh;
       width: 100vw;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
       overflow: hidden;
     }
 
-    img {
-      max-width: 92vw;
-      max-height: 92vh;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
+    .stage-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
     }
 
-    /* Кнопка управления треком LEMMiNO - Cipher (правый верхний угол) */
+    img {
+      max-width: 85vw;
+      max-height: 76vh;
+      object-fit: contain;
+    }
+
+    .cipher-hint {
+      text-align: center;
+      line-height: 1.7;
+      letter-spacing: 3px;
+      font-size: 15px;
+      color: #cfcfcf;
+      user-select: text;
+    }
+
+    .cipher-hint .timecode {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
     #soundToggle {
       position: fixed;
       top: 18px;
@@ -53,7 +72,6 @@
       color: #e6e6e6;
     }
 
-    /* Постоянный счётчик введённых букв/цифр (правый нижний угол) */
     #charCounter {
       position: fixed;
       bottom: 18px;
@@ -73,28 +91,33 @@
 </head>
 <body>
 
-  <!-- Положи cICADA2.jpg и cipher.mp3 (LEMMiNO - Cipher) в корень репозитория -->
-  <img id="cipherImg" src="cICADA2.jpg" alt="...">
-  
+  <div class="stage-container">
+    <!-- Положи EVERTURN.png (со спрятанной ссылкой внутри) в корень репозитория -->
+    <img id="cipherImg" src="EVERTURN.png" alt="EVERTURN">
+
+    <div class="cipher-hint">
+      <div class="timecode">3:06</div>
+      <div>4 9 17 13 14 15</div>
+    </div>
+  </div>
+
   <div id="soundToggle">[ SOUND: OFF ]</div>
-  <div id="charCounter">00 / 34</div>
+  <div id="charCounter">00 / 22</div>
 
   <audio id="bgMusic" src="cipher.mp3" loop preload="auto"></audio>
 
   <script>
-    // === 1. ЗАГРУЗКА КАРТИНКИ ===
+    // Запасные варианты регистра имени файла картинки
     (function loadCipherImage() {
       const img = document.getElementById("cipherImg");
-      const candidates = ["cicada2.jpg", "CICADA2.jpg", "cICADA2.JPG", "cICADA2.png", "Cicada_2.png"];
+      const candidates = ["everturn.png", "Everturn.png", "EVERTURN.PNG"];
       let idx = 0;
       img.onerror = function() {
         if (idx < candidates.length) img.src = candidates[idx++];
       };
     })();
 
-    document.addEventListener("contextmenu", e => e.preventDefault());
-
-    // === 2. УПРАВЛЕНИЕ МУЗЫКОЙ (LEMMiNO - Cipher) ===
+    // Фоновая музыка (LEMMiNO - Cipher)
     (function initAudio() {
       const audio = document.getElementById("bgMusic");
       const toggle = document.getElementById("soundToggle");
@@ -109,11 +132,9 @@
         }).catch(() => {});
       }
 
-      // Автоматический старт при первом клике или нажатии клавиши
       window.addEventListener("click", playAudio, { once: true });
       window.addEventListener("keydown", playAudio, { once: true });
 
-      // Ручное переключение
       toggle.addEventListener("click", (e) => {
         e.stopPropagation();
         if (audio.paused) {
@@ -131,7 +152,6 @@
       });
     })();
 
-    // === 3. НАВИГАЦИЯ ===
     function goToPage(filename) {
       const url = new URL(window.location.href);
       if (url.pathname.endsWith(".html")) {
@@ -143,17 +163,16 @@
       window.location.href = url.toString();
     }
 
-    // === 4. ПРОВЕРКА ОТВЕТА И СЧЁТЧИК СИМВОЛОВ: "butterflydownontheboatcemetery2012" ===
+    // === ПРОВЕРКА ОТВЕТА: "oneoceanknowwellbefree" (22 буквы) ===
     (function stage1Listener() {
       const TARGET_CODES = [
-        "KeyB","KeyU","KeyT","KeyT","KeyE","KeyR","F","L","Y",
-        "KeyD","KeyO","KeyW","KeyN",
-        "KeyO","KeyN",
-        "KeyT","KeyH","KeyE",
-        "KeyB","KeyO","KeyA","KeyT",
-        "KeyC","KeyE","KeyM","KeyE","KeyT","KeyE","KeyR","KeyY",
-        "Digit2","Digit0","Digit1","Digit2"
-      ].map(c => c.length === 1 ? "Key" + c : c);
+        "KeyO","KeyN","KeyE",
+        "KeyO","KeyC","KeyE","KeyA","KeyN",
+        "KeyK","KeyN","KeyO","KeyW",
+        "KeyW","KeyE","KeyL","KeyL",
+        "KeyB","KeyE",
+        "KeyF","KeyR","KeyE","KeyE"
+      ];
 
       let buffer = [];
       let glowTimer = null;
@@ -167,30 +186,24 @@
           const total = String(TARGET_CODES.length).padStart(2, "0");
           counterEl.textContent = `${current} / ${total}`;
         }
-
         counterEl.classList.add("active");
         clearTimeout(glowTimer);
-        glowTimer = setTimeout(() => {
-          counterEl.classList.remove("active");
-        }, 600);
+        glowTimer = setTimeout(() => counterEl.classList.remove("active"), 600);
       }
 
       window.addEventListener("keydown", (e) => {
-        // Сброс ввода по Escape
         if (e.code === "Escape") {
           buffer = [];
-          updateCounter("00 / 34");
+          updateCounter("00 / 22");
           return;
         }
 
-        // Удаление последнего символа по Backspace
         if (e.code === "Backspace") {
           buffer.pop();
           updateCounter();
           return;
         }
 
-        // Учитываем только буквы и цифры (игнорируем пробелы, запятые, дефисы)
         const isLetter = e.code.startsWith("Key");
         const isDigit = e.code.startsWith("Digit");
         if (!isLetter && !isDigit) return;
@@ -202,9 +215,8 @@
 
         updateCounter();
 
-        // Проверка совпадения
         if (buffer.length === TARGET_CODES.length && buffer.join(",") === TARGET_CODES.join(",")) {
-          counterEl.textContent = "34 / 34 [OK]";
+          counterEl.textContent = "22 / 22 [OK]";
           counterEl.style.color = "#ffffff";
           document.body.style.backgroundColor = "#ffffff";
           setTimeout(() => {
@@ -214,7 +226,7 @@
       });
     })();
 
-    // === 5. ЗАЩИТА КОНСОЛИ (F12) ===
+    // Защита консоли (F12)
     (function antiInspect() {
       const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
       function printWarning() {
