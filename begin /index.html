@@ -33,14 +33,13 @@
 </head>
 <body>
 
-  <!-- Картинка должна лежать внутри папки begin/ под именем 01.png -->
-  <img src="01.png" alt="...">
+  <!-- Сначала ищет 01.png, а если её нет — автоматически открывает scrifre.png -->
+  <img src="01.png" onerror="this.onerror=null; this.src='scrifre.png';" alt="...">
 
   <script>
-    // Запрет правого клика по картинке
     document.addEventListener("contextmenu", e => e.preventDefault());
 
-    // Переход на 2-й этап, если игрок напечатает на клавиатуре слово "player"
+    // Переход на 2-й этап (в папку player/), если игрок напечатает "player"
     (function nextStageListener() {
       let codeBuffer = [];
       const TARGET_SEQ = "KeyP,KeyL,KeyA,KeyY,KeyE,KeyR";
@@ -53,7 +52,11 @@
         if (codeBuffer.join(",") === TARGET_SEQ) {
           document.body.style.backgroundColor = "#ffffff";
           setTimeout(() => {
-            window.location.href = "../player/";
+            let basePath = window.location.pathname
+              .replace(/\/index\.html$/i, "")
+              .replace(/\/begin\/?$/i, "/");
+            if (!basePath.endsWith("/")) basePath += "/";
+            window.location.href = window.location.origin + basePath + "player/index.html";
           }, 150);
         }
       });
