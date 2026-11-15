@@ -23,25 +23,50 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 20px;
       overflow: hidden;
     }
 
     img {
-      max-width: 88vw;
-      max-height: 88vh;
+      max-width: 92vw;
+      max-height: 92vh;
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
+    }
+
+    /* Ненавязчивый индикатор ввода в углу экрана */
+    #keyPulse {
+      position: fixed;
+      bottom: 18px;
+      right: 22px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #444444;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
 
-  <!-- Ищет scrifre.png или 01.png прямо в корне репозитория -->
-  <img src="scrifre.png" onerror="this.onerror=null; this.src='01.png';" alt="...">
+  <!-- Положи cICADA2.jpg в корень репозитория рядом со stage1.html -->
+  <img id="cipherImg" src="cICADA2.jpg" alt="...">
+  <div id="keyPulse"></div>
 
   <script>
+    // Запасной поиск картинки на случай разного регистра букв или формата на GitHub
+    (function loadCipherImage() {
+      const img = document.getElementById("cipherImg");
+      const candidates = ["cicada2.jpg", "CICADA2.jpg", "cICADA2.JPG", "cICADA2.png", "Cicada_2.png"];
+      let idx = 0;
+      img.onerror = function() {
+        if (idx < candidates.length) img.src = candidates[idx++];
+      };
+    })();
+
+    // Блокируем контекстное меню правой кнопки мыши (чтобы не скачивали в 1 клик, хотя знатоки обойдут)
     document.addEventListener("contextmenu", e => e.preventDefault());
 
     function goToPage(filename) {
@@ -55,26 +80,70 @@
       window.location.href = url.toString();
     }
 
-    // При вводе "player" перекидывает на stage2.html
-    (function nextStageListener() {
-      let codeBuffer = [];
-      const TARGET_SEQ = "KeyP,KeyL,KeyA,KeyY,KeyE,KeyR";
+    // === ПРОВЕРКА ОТВЕТА: "butterflydownontheboatcemetery2012" (34 символа) ===
+    (function stage1Listener() {
+      const TARGET_CODES = [
+        "KeyB","KeyU","KeyT","KeyT","KeyE","KeyR","KeyF","KeyL","KeyY",
+        "KeyD","KeyO","KeyW","KeyN",
+        "KeyO","KeyN",
+        "KeyT","KeyH","KeyE",
+        "KeyB","KeyO","KeyA","KeyT",
+        "KeyC","KeyE","KeyM","KeyE","KeyT","KeyE","KeyR","KeyY",
+        "Digit2","Digit0","Digit1","Digit2"
+      ];
+
+      let buffer = [];
+      let pulseTimer = null;
+      const pulseEl = document.getElementById("keyPulse");
 
       window.addEventListener("keydown", (e) => {
-        if (e.code === "Space" || e.key.length > 1) return;
-        codeBuffer.push(e.code);
-        if (codeBuffer.length > 6) codeBuffer.shift();
+        // Сброс буфера по Escape
+        if (e.code === "Escape") {
+          buffer = [];
+          pulseEl.innerText = "[ RESET ]";
+          pulseEl.style.opacity = "1";
+          clearTimeout(pulseTimer);
+          pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 800);
+          return;
+        }
 
-        if (codeBuffer.join(",") === TARGET_SEQ) {
+        // Удаление последнего символа по Backspace
+        if (e.code === "Backspace") {
+          buffer.pop();
+          pulseEl.innerText = `[ ${String(buffer.length).padStart(2, "0")} / ${TARGET_CODES.length} ]`;
+          pulseEl.style.opacity = "1";
+          clearTimeout(pulseTimer);
+          pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 1000);
+          return;
+        }
+
+        // Игнорируем пробелы, запятые, дефисы, Shift и т.д.
+        const isLetter = e.code.startsWith("Key");
+        const isDigit = e.code.startsWith("Digit");
+        if (!isLetter && !isDigit) return;
+
+        buffer.push(e.code);
+        if (buffer.length > TARGET_CODES.length) {
+          buffer.shift();
+        }
+
+        // Показываем прогресс введённых символов
+        pulseEl.innerText = `[ ${String(buffer.length).padStart(2, "0")} / ${TARGET_CODES.length} ]`;
+        pulseEl.style.opacity = "1";
+        clearTimeout(pulseTimer);
+        pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 1200);
+
+        // Переход на stage2.html при совпадении
+        if (buffer.length === TARGET_CODES.length && buffer.join(",") === TARGET_CODES.join(",")) {
           document.body.style.backgroundColor = "#ffffff";
           setTimeout(() => {
             goToPage("stage2.html");
-          }, 150);
+          }, 180);
         }
       });
     })();
 
-    // Защита консоли (F12)
+    // === ЗАЩИТА КОНСОЛИ (F12) ===
     (function antiInspect() {
       const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
       function printWarning() {
