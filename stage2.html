@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STAGE 2 // EVERTURN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #050505;
+      color: #e6e6e6;
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease;
+    }
+
+    .stage-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      max-width: 90vw;
+    }
+
+    img {
+      max-width: 85vw;
+      max-height: 62vh;
+      object-fit: contain;
+    }
+
+    .terminal-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      border-bottom: 1px solid #3d3d3d;
+      padding: 6px 4px;
+      transition: border-color 0.25s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-bottom-color: #ffffff;
+    }
+
+    .input-wrapper.error {
+      border-bottom-color: #ff3b3b;
+      animation: shake 0.25s ease-in-out;
+    }
+
+    .prompt-symbol {
+      color: #666666;
+      margin-right: 10px;
+      font-size: 14px;
+      user-select: none;
+    }
+
+    input[type="text"] {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      letter-spacing: 2px;
+      width: 100%;
+    }
+
+    input[type="text"]::placeholder {
+      color: #3a3a3a;
+      letter-spacing: 2px;
+    }
+
+    #statusMessage {
+      min-height: 44px;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.6;
+      letter-spacing: 1px;
+      color: #a6a6a6;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    #statusMessage.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #statusMessage .highlight {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    #soundToggle {
+      position: fixed;
+      top: 18px;
+      right: 22px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #555555;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s ease;
+      z-index: 10;
+    }
+
+    #soundToggle:hover {
+      color: #e6e6e6;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="stage-container">
+    <!-- Полиглот PNG со спрятанным внутри ZIP-архивом -->
+    <img id="artifactImg" src="artifact_02.png" alt="STAGE 2 ARTIFACT">
+
+    <div class="terminal-box">
+      <div class="input-wrapper" id="inputWrapper">
+        <span class="prompt-symbol">&gt;</span>
+        <input type="text" id="answerInput" placeholder="..." autocomplete="off" spellcheck="false" autofocus>
+      </div>
+      <div id="statusMessage"></div>
+    </div>
+  </div>
+
+  <div id="soundToggle">[ SOUND: OFF ]</div>
+
+  <!-- Фоновая музыка второго этапа -->
+  <audio id="bgMusic" src="Melancholy_BGM.mp3" loop preload="auto"></audio>
+
+  <script>
+    // === SHA-256 ХЕШИ ОТВЕТОВ (защита от просмотра исходного кода Ctrl+U) ===
+    const FIRST_HASH  = "a2c0a1cf47260b341b66c6371ff9ee92ae3f1de9d821f681b662eb86ed2467c7";
+    const SECOND_HASH = "489f4ea651e5b44042e229f5194d909fa50f91779f40f91e7a2835b8e3ab063d";
+    const NEXT_TARGET = "c3RhZ2UzLmh0bWw="; // Base64 для "stage3.html"
+
+    let phase = 1;
+
+    const inputEl = document.getElementById("answerInput");
+    const wrapperEl = document.getElementById("inputWrapper");
+    const statusEl = document.getElementById("statusMessage");
+
+    // Запасные варианты регистра имени файла картинки
+    (function loadArtifactImage() {
+      const img = document.getElementById("artifactImg");
+      const candidates = ["ARTIFACT_02.png", "artifact_02.PNG", "Artifact_02.png"];
+      let idx = 0;
+      img.onerror = function() {
+        if (idx < candidates.length) img.src = candidates[idx++];
+      };
+    })();
+
+    async function sha256(str) {
+      const buf = new TextEncoder().encode(str);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", buf);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function goToPage(filename) {
+      const url = new URL(window.location.href);
+      if (url.pathname.endsWith(".html")) {
+        url.pathname = url.pathname.replace(/[^/]+$/, filename);
+      } else {
+        if (!url.pathname.endsWith("/")) url.pathname += "/";
+        url.pathname += filename;
+      }
+      window.location.href = url.toString();
+    }
+
+    function triggerError() {
+      wrapperEl.classList.remove("error");
+      void wrapperEl.offsetWidth;
+      wrapperEl.classList.add("error");
+    }
+
+    inputEl.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+
+      const value = inputEl.value.trim().toLowerCase();
+      if (!value) return;
+
+      const inputHash = await sha256(value);
+
+      if (phase === 1) {
+        if (inputHash === FIRST_HASH) {
+          phase = 2;
+          inputEl.value = "";
+          statusEl.innerHTML = `<span class="highlight">You're smart, aren't you ? \\\\</span><br>Inscribe verbum secundum.`;
+          statusEl.classList.add("visible");
+        } else {
+          triggerError();
+        }
+      } else if (phase === 2) {
+        if (inputHash === SECOND_HASH) {
+          inputEl.disabled = true;
+          statusEl.innerHTML = `<span class="highlight">[ ACCESS GRANTED ]</span>`;
+          document.body.style.backgroundColor = "#ffffff";
+          setTimeout(() => {
+            goToPage(atob(NEXT_TARGET));
+          }, 250);
+        } else {
+          triggerError();
+        }
+      }
+    });
+
+    // Фоновая музыка (Melancholy_BGM.mp3)
+    (function initAudio() {
+      const audio = document.getElementById("bgMusic");
+      const toggle = document.getElementById("soundToggle");
+      audio.volume = 0.35;
+      let userMuted = false;
+
+      function playAudio() {
+        if (userMuted || !audio.paused) return;
+        audio.play().then(() => {
+          toggle.textContent = "[ SOUND: ON ]";
+          toggle.style.color = "#888888";
+        }).catch(() => {});
+      }
+
+      window.addEventListener("click", playAudio, { once: true });
+      window.addEventListener("keydown", playAudio, { once: true });
+
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (audio.paused) {
+          userMuted = false;
+          audio.play().then(() => {
+            toggle.textContent = "[ SOUND: ON ]";
+            toggle.style.color = "#888888";
+          });
+        } else {
+          userMuted = true;
+          audio.pause();
+          toggle.textContent = "[ SOUND: OFF ]";
+          toggle.style.color = "#555555";
+        }
+      });
+    })();
+
+    // Защита консоли (F12)
+    (function antiInspect() {
+      const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
+      function printWarning() {
+        console.clear();
+        console.log("%cThere is nothing in there, try to think >:0", bannerStyle);
+      }
+      printWarning();
+      let devtoolsOpen = false;
+      setInterval(() => {
+        const isOpen = window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160;
+        if (isOpen && !devtoolsOpen) { devtoolsOpen = true; printWarning(); }
+        else if (!isOpen) { devtoolsOpen = false; }
+      }, 800);
+    })();
+  </script>
+
+</body>
+</html>
