@@ -35,28 +35,54 @@
       -webkit-user-drag: none;
     }
 
-    /* Ненавязчивый индикатор ввода в углу экрана */
-    #keyPulse {
+    /* Кнопка управления треком LEMMiNO - Cipher (правый верхний угол) */
+    #soundToggle {
+      position: fixed;
+      top: 18px;
+      right: 22px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #555555;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s ease;
+      z-index: 10;
+    }
+
+    #soundToggle:hover {
+      color: #e6e6e6;
+    }
+
+    /* Постоянный счётчик введённых букв/цифр (правый нижний угол) */
+    #charCounter {
       position: fixed;
       bottom: 18px;
       right: 22px;
       font-size: 12px;
       letter-spacing: 2px;
-      color: #444444;
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      color: #4d4d4d;
+      user-select: none;
       pointer-events: none;
+      transition: color 0.2s ease;
+    }
+
+    #charCounter.active {
+      color: #a6a6a6;
     }
   </style>
 </head>
 <body>
 
-  <!-- Положи cICADA2.jpg в корень репозитория рядом со stage1.html -->
+  <!-- Положи cICADA2.jpg и cipher.mp3 (LEMMiNO - Cipher) в корень репозитория -->
   <img id="cipherImg" src="cICADA2.jpg" alt="...">
-  <div id="keyPulse"></div>
+  
+  <div id="soundToggle">[ SOUND: OFF ]</div>
+  <div id="charCounter">00 / 34</div>
+
+  <audio id="bgMusic" src="cipher.mp3" loop preload="auto"></audio>
 
   <script>
-    // Запасной поиск картинки на случай разного регистра букв или формата на GitHub
+    // === 1. ЗАГРУЗКА КАРТИНКИ ===
     (function loadCipherImage() {
       const img = document.getElementById("cipherImg");
       const candidates = ["cicada2.jpg", "CICADA2.jpg", "cICADA2.JPG", "cICADA2.png", "Cicada_2.png"];
@@ -66,9 +92,46 @@
       };
     })();
 
-    // Блокируем контекстное меню правой кнопки мыши (чтобы не скачивали в 1 клик, хотя знатоки обойдут)
     document.addEventListener("contextmenu", e => e.preventDefault());
 
+    // === 2. УПРАВЛЕНИЕ МУЗЫКОЙ (LEMMiNO - Cipher) ===
+    (function initAudio() {
+      const audio = document.getElementById("bgMusic");
+      const toggle = document.getElementById("soundToggle");
+      audio.volume = 0.35;
+      let userMuted = false;
+
+      function playAudio() {
+        if (userMuted || !audio.paused) return;
+        audio.play().then(() => {
+          toggle.textContent = "[ SOUND: ON ]";
+          toggle.style.color = "#888888";
+        }).catch(() => {});
+      }
+
+      // Автоматический старт при первом клике или нажатии клавиши
+      window.addEventListener("click", playAudio, { once: true });
+      window.addEventListener("keydown", playAudio, { once: true });
+
+      // Ручное переключение
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (audio.paused) {
+          userMuted = false;
+          audio.play().then(() => {
+            toggle.textContent = "[ SOUND: ON ]";
+            toggle.style.color = "#888888";
+          });
+        } else {
+          userMuted = true;
+          audio.pause();
+          toggle.textContent = "[ SOUND: OFF ]";
+          toggle.style.color = "#555555";
+        }
+      });
+    })();
+
+    // === 3. НАВИГАЦИЯ ===
     function goToPage(filename) {
       const url = new URL(window.location.href);
       if (url.pathname.endsWith(".html")) {
@@ -80,44 +143,54 @@
       window.location.href = url.toString();
     }
 
-    // === ПРОВЕРКА ОТВЕТА: "butterflydownontheboatcemetery2012" (34 символа) ===
+    // === 4. ПРОВЕРКА ОТВЕТА И СЧЁТЧИК СИМВОЛОВ: "butterflydownontheboatcemetery2012" ===
     (function stage1Listener() {
       const TARGET_CODES = [
-        "KeyB","KeyU","KeyT","KeyT","KeyE","KeyR","KeyF","KeyL","KeyY",
+        "KeyB","KeyU","KeyT","KeyT","KeyE","KeyR","F","L","Y",
         "KeyD","KeyO","KeyW","KeyN",
         "KeyO","KeyN",
         "KeyT","KeyH","KeyE",
         "KeyB","KeyO","KeyA","KeyT",
         "KeyC","KeyE","KeyM","KeyE","KeyT","KeyE","KeyR","KeyY",
         "Digit2","Digit0","Digit1","Digit2"
-      ];
+      ].map(c => c.length === 1 ? "Key" + c : c);
 
       let buffer = [];
-      let pulseTimer = null;
-      const pulseEl = document.getElementById("keyPulse");
+      let glowTimer = null;
+      const counterEl = document.getElementById("charCounter");
+
+      function updateCounter(customText) {
+        if (customText) {
+          counterEl.textContent = customText;
+        } else {
+          const current = String(buffer.length).padStart(2, "0");
+          const total = String(TARGET_CODES.length).padStart(2, "0");
+          counterEl.textContent = `${current} / ${total}`;
+        }
+
+        counterEl.classList.add("active");
+        clearTimeout(glowTimer);
+        glowTimer = setTimeout(() => {
+          counterEl.classList.remove("active");
+        }, 600);
+      }
 
       window.addEventListener("keydown", (e) => {
-        // Сброс буфера по Escape
+        // Сброс ввода по Escape
         if (e.code === "Escape") {
           buffer = [];
-          pulseEl.innerText = "[ RESET ]";
-          pulseEl.style.opacity = "1";
-          clearTimeout(pulseTimer);
-          pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 800);
+          updateCounter("00 / 34");
           return;
         }
 
         // Удаление последнего символа по Backspace
         if (e.code === "Backspace") {
           buffer.pop();
-          pulseEl.innerText = `[ ${String(buffer.length).padStart(2, "0")} / ${TARGET_CODES.length} ]`;
-          pulseEl.style.opacity = "1";
-          clearTimeout(pulseTimer);
-          pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 1000);
+          updateCounter();
           return;
         }
 
-        // Игнорируем пробелы, запятые, дефисы, Shift и т.д.
+        // Учитываем только буквы и цифры (игнорируем пробелы, запятые, дефисы)
         const isLetter = e.code.startsWith("Key");
         const isDigit = e.code.startsWith("Digit");
         if (!isLetter && !isDigit) return;
@@ -127,23 +200,21 @@
           buffer.shift();
         }
 
-        // Показываем прогресс введённых символов
-        pulseEl.innerText = `[ ${String(buffer.length).padStart(2, "0")} / ${TARGET_CODES.length} ]`;
-        pulseEl.style.opacity = "1";
-        clearTimeout(pulseTimer);
-        pulseTimer = setTimeout(() => pulseEl.style.opacity = "0", 1200);
+        updateCounter();
 
-        // Переход на stage2.html при совпадении
+        // Проверка совпадения
         if (buffer.length === TARGET_CODES.length && buffer.join(",") === TARGET_CODES.join(",")) {
+          counterEl.textContent = "34 / 34 [OK]";
+          counterEl.style.color = "#ffffff";
           document.body.style.backgroundColor = "#ffffff";
           setTimeout(() => {
             goToPage("stage2.html");
-          }, 180);
+          }, 220);
         }
       });
     })();
 
-    // === ЗАЩИТА КОНСОЛИ (F12) ===
+    // === 5. ЗАЩИТА КОНСОЛИ (F12) ===
     (function antiInspect() {
       const bannerStyle = "color: #ff3b3b; background: #0a0a0a; font-size: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 12px 16px; border: 1px solid #ff3b3b;";
       function printWarning() {
